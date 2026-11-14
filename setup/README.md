@@ -52,7 +52,8 @@ $S/install-deskflow.sh
 ==> Installed deskflow-core v1.27.0, protocol v1.8
 ```
 
-The script stops at the first failed check and installs nothing. It installs 1.27.0, the release verified here.
+The script stops at the first failed check and installs nothing. It downloads with `curl`, so no quarantine flag
+is set. If you download the DMG in a browser instead, macOS asks once whether to open an app from the internet. It installs 1.27.0, the release verified here.
 Useful flags:
 
 - `--download-only` verifies without installing;
@@ -104,12 +105,21 @@ All of these are in **System Settings → Privacy & Security**:
 | server | **Input Monitoring**: turn on Deskflow, if it is listed | the pointer will not cross the edge |
 | client, macOS 15+ | **Local Network**: turn on Deskflow | the client never connects; `lsof` shows `SYN_SENT` |
 
-The client did not need Input Monitoring. After granting Accessibility, start the app again with `open -a Deskflow`,
+The original client worked without Input Monitoring, though whether it is needed was not tested either way.
+After granting Accessibility, start the app again with `open -a Deskflow`,
 since it had quit. After granting Local Network, nothing needs restarting: the running client connects within
 seconds.
 
-**Make it survive a restart:** add Deskflow in System Settings → General → Login Items on both Macs. Otherwise,
-after a restart, the cable address and settings are still there but nothing connects until someone opens the app.
+**Make it survive a restart** by adding Deskflow to Login Items on both Macs. Otherwise, after a restart, the cable
+address and settings are still there but nothing connects until someone opens the app:
+
+```bash
+osascript -e 'tell application "System Events" to make login item at end with properties {path:"/Applications/Deskflow.app", hidden:false}'
+osascript -e 'tell application "System Events" to get the {name, path} of every login item'    # check
+```
+
+If macOS asks whether your terminal may control System Events, allow it, or add the app by hand in System
+Settings → General → Login Items → **+**.
 
 ## 5. Trust each other
 
@@ -153,8 +163,9 @@ When something else fails, the log line is probably in
 ## Undo everything
 
 ```bash
-pkill -TERM -f /Applications/Deskflow.app/Contents/MacOS/deskflow-core
 pkill -TERM -f /Applications/Deskflow.app/Contents/MacOS/Deskflow
+pkill -TERM -f /Applications/Deskflow.app/Contents/MacOS/deskflow-core
+pgrep -lf /Applications/Deskflow.app || echo "Deskflow stopped"
 tccutil reset All org.deskflow.deskflow        # forget its Accessibility, Input Monitoring, Local Network grants
 rm -rf /Applications/Deskflow.app ~/Library/Deskflow ~/Library/Preferences/State/Deskflow.state
 ```

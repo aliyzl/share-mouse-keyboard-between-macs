@@ -54,7 +54,7 @@ macOS behaviour, not something tested here).
 ### `FATAL: a runtime error occurred: assistive devices does not trust this process`
 
 **Why:** `deskflow-core` was started from a terminal. macOS charges the Accessibility check to the app that
-launched it, so the terminal is checked, not Deskflow.
+launched it, so the terminal or editor (Terminal, VS Code and the like) is checked, not Deskflow.
 
 **Fix:** start Deskflow only with `open -a Deskflow`; the app starts the core itself.
 
@@ -77,8 +77,9 @@ canceled. (-128)"*, even with `gui/closeReminder=false`, or it leaves the app ru
 **Fix:** `kill -TERM` both processes by full path:
 
 ```bash
-pkill -TERM -f /Applications/Deskflow.app/Contents/MacOS/deskflow-core
 pkill -TERM -f /Applications/Deskflow.app/Contents/MacOS/Deskflow
+pkill -TERM -f /Applications/Deskflow.app/Contents/MacOS/deskflow-core
+pgrep -lf /Applications/Deskflow.app || echo "Deskflow stopped"
 ```
 
 Note that `pgrep -f deskflow` is case-sensitive and does not match the GUI, whose binary is `Deskflow`. macOS
@@ -149,7 +150,7 @@ The script prints each round trip, then the same to the router. In the original 
 | --- | --- |
 | between the Macs over Wi-Fi | averages of 460–1,000 ms; single round trips up to 2.8 s |
 | server to router | averages of 517–579 ms |
-| client to router | 5 ms average at a moment when the server still needed 542 ms |
+| client to router | 510 ms average at 23:16; 5 ms at 23:22, when the server still needed 542 ms |
 | between the Macs over a cable | 0.6 ms average |
 
 Deskflow was ruled out by stopping its core: the router latency did not change.
@@ -163,8 +164,14 @@ radio off its channel and inflates the numbers.
 ### Deskflow does not start after a restart
 
 The cable address and the settings survive a restart, but Deskflow is not in Login Items, so nothing connects until
-someone opens it. Add it in System Settings → General → Login Items on both Macs. After `open -a Deskflow`, the
-original client reconnected over the cable in under 8 seconds.
+someone opens it. Add it to Login Items on both Macs, either in System Settings → General → Login Items or with:
+
+```bash
+osascript -e 'tell application "System Events" to make login item at end with properties {path:"/Applications/Deskflow.app", hidden:false}'
+osascript -e 'tell application "System Events" to get the {name, path} of every login item'    # check
+```
+
+After `open -a Deskflow`, the original client reconnected over the cable in under 8 seconds.
 
 ### Wi-Fi names show as `<redacted>`
 

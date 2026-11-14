@@ -73,8 +73,9 @@ setting.
 The server listens on every interface (`*:24800`), so nothing changes there. On the client, quit Deskflow, then:
 
 ```bash
-pkill -TERM -f /Applications/Deskflow.app/Contents/MacOS/deskflow-core
 pkill -TERM -f /Applications/Deskflow.app/Contents/MacOS/Deskflow
+pkill -TERM -f /Applications/Deskflow.app/Contents/MacOS/deskflow-core
+pgrep -lf /Applications/Deskflow.app || echo "Deskflow stopped"
 <skill>/scripts/write-deskflow-config.py client --name macbook --server 192.168.77.1
 open -a Deskflow
 ```
@@ -85,7 +86,8 @@ The TLS trust carries over, because it belongs to the certificate, not the addre
 
 ```bash
 <skill>/scripts/measure-latency.sh 192.168.77.2   # from the server: expect under 1 ms
-<skill>/scripts/check-deskflow.sh                 # "connected ... (via en0)": the cable
+<skill>/scripts/check-deskflow.sh                 # on the server "connected ... (via en0)", on the client
+                                                  # "(via en6)": each names its own cable interface
 ```
 
 ## Undo

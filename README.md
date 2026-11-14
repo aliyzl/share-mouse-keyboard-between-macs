@@ -52,8 +52,8 @@ open -a Deskflow
 # 4. Check it
 $S/check-deskflow.sh                   # expect "VERDICT: OK"
 
-# 5. Have it start at login: System Settings → General → Login Items → add Deskflow
-#    (otherwise, after a restart, nothing connects until you open the app)
+# 5. Have it start at login (otherwise, after a restart, nothing connects until you open the app)
+osascript -e 'tell application "System Events" to make login item at end with properties {path:"/Applications/Deskflow.app", hidden:false}'
 ```
 
 The installer pins the release that was verified here. `--latest` takes the newest one, which may use a
@@ -171,7 +171,7 @@ that cost the most:
 | | Verified on |
 | --- | --- |
 | Server | iMac 24-inch (M1, 2021), macOS 26.6, Deskflow 1.27.0 `macos-arm64` |
-| Client | MacBook Pro 15-inch (2018, Intel), macOS 15.8, Deskflow 1.27.0 `macos-x86_64`; it needed no Input Monitoring |
+| Client | MacBook Pro 15-inch (2018, Intel), macOS 15.8, Deskflow 1.27.0 `macos-x86_64`; it ran without Input Monitoring (need not tested) |
 | Link | direct Gigabit Ethernet (the MacBook through a USB-C adapter). Before that, 2.4 GHz 802.11n Wi-Fi, which worked but lagged |
 | Claude Code | skills and plugin marketplace as documented in November 2026 |
 

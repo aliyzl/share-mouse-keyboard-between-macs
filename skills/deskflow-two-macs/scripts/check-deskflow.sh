@@ -72,6 +72,8 @@ if [[ -n "$conns" ]]; then
     iface="$(route -n get "$peer" 2>/dev/null | awk '/interface:/{print $2}')"
     ok "connected $c (via $iface)"
   done <<< "$conns"
+elif [[ "$mode" == 1 ]] && lsof -nP -iTCP:24800 -sTCP:SYN_SENT >/dev/null 2>&1; then
+  fix "stuck in SYN_SENT: allow Deskflow in Privacy & Security -> Local Network (macOS 15+)"
 elif [[ "$mode" == 1 ]]; then
   fix "not connected: check the server, then Local Network permission for Deskflow"
 else

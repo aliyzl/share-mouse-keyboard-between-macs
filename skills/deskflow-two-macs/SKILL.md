@@ -93,7 +93,8 @@ troubleshooting file) and try again.
 Ask the person to allow Deskflow in **System Settings → Privacy & Security**:
 
 - **Accessibility**, on both Macs. Without it the app quits immediately.
-- **Input Monitoring**, on the server, if it is listed or prompted. The client did not need it.
+- **Input Monitoring**, on the server, if it is listed or prompted. The original client ran without it (not tested
+  either way).
 - **Local Network**, on the client (macOS 15 and later). Without it the connection hangs in `SYN_SENT`. Once it is
   granted, the running client connects within seconds.
 
@@ -101,8 +102,16 @@ On the first connection the client asks to trust the server's TLS fingerprint, a
 client's. Run `check-deskflow.sh` on the other Mac to read its fingerprint, compare, and only then tell the person to
 accept.
 
-Finally, so that a restart does not silently break the setup, suggest adding Deskflow to **System Settings →
-General → Login Items** on both Macs.
+Finally, so that a restart does not silently break the setup, offer to add Deskflow to Login Items on both Macs.
+With the person's agreement:
+
+```bash
+osascript -e 'tell application "System Events" to make login item at end with properties {path:"/Applications/Deskflow.app", hidden:false}'
+osascript -e 'tell application "System Events" to get the {name, path} of every login item'    # check
+```
+
+macOS may ask the person to let the terminal control System Events. The manual route is System Settings → General
+→ Login Items → **+**.
 
 ## 5. Verify
 
