@@ -1,0 +1,9 @@
+# Local only: identifiers of the machines this was built on, read by tools/scan-secrets.sh
+tools/personal-data.patterns
+# Runtime files of the mailbox tool
+messages.jsonl
+# Deskflow state that must never be shared
+*.pem
+trusted-servers
+trusted-clients
+.DS_Store
