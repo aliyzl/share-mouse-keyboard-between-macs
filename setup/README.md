@@ -4,6 +4,8 @@
 macOS 15.8 (Intel) · If Deskflow's own behaviour disagrees with this page, Deskflow is right, so please open an
 issue.
 
+**Prerequisite on both Macs:** the Xcode Command Line Tools, for `git` and `python3` (`xcode-select --install`).
+
 This is the manual route. The [skill](../skills/deskflow-two-macs/SKILL.md) runs the same steps for you. Commands
 are run from a clone of this repository; `S` is short for the scripts folder:
 
@@ -50,14 +52,16 @@ $S/install-deskflow.sh
 ==> Installed deskflow-core v1.27.0, protocol v1.8
 ```
 
-The script stops at the first failed check and installs nothing. Useful flags:
+The script stops at the first failed check and installs nothing. It installs 1.27.0, the release verified here.
+Useful flags:
 
 - `--download-only` verifies without installing;
-- `--version 1.27.0` pins the release;
+- `--latest` takes the newest release (its settings format may differ);
 - `--force` replaces an existing copy.
 
-If you already have Barrier, Synergy or Input Leap on either Mac, quit it and remove it from Login Items. An old
-client still running keeps knocking on port 24800.
+If you have Barrier, Synergy or Input Leap on either Mac, make sure it is not running, and remove it from Login
+Items. An old client that is still running keeps knocking on port 24800. Merely installed, it does no harm: the
+original client had Barrier and Synergy installed without any conflict.
 
 ## 2. Write the settings (before the first launch)
 
@@ -73,15 +77,17 @@ Client:
 $S/write-deskflow-config.py client --name macbook --server 192.168.77.1
 ```
 
-Each command backs up any existing `Deskflow.conf` and refuses while Deskflow is running. Without this step you
-can set the same things in the app's window. The server's layout, though, must then be built in its grid. The
-older `section: screens` file format is ignored by 1.27.
+Each command backs up every file it replaces, turns on the log file (`~/Library/Deskflow/deskflow.log`), and
+refuses while Deskflow is running. Without this step you can set the same things in the app's window. The server's
+layout, though, must then be built in its grid. The older `section: screens` file format is ignored by 1.27.
 
 ## 3. Start, server first
 
 ```bash
 open -a Deskflow
 ```
+
+The client retries every few seconds, so the order is not critical.
 
 If `open` fails with error `-10810`, register the app once with
 `/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f /Applications/Deskflow.app`.
@@ -98,12 +104,17 @@ All of these are in **System Settings → Privacy & Security**:
 | server | **Input Monitoring**: turn on Deskflow, if it is listed | the pointer will not cross the edge |
 | client, macOS 15+ | **Local Network**: turn on Deskflow | the client never connects; `lsof` shows `SYN_SENT` |
 
-After changing a permission, quit Deskflow and start it again: `kill -TERM` both processes, then `open -a Deskflow`.
+The client did not need Input Monitoring. After granting Accessibility, start the app again with `open -a Deskflow`,
+since it had quit. After granting Local Network, nothing needs restarting: the running client connects within
+seconds.
+
+**Make it survive a restart:** add Deskflow in System Settings → General → Login Items on both Macs. Otherwise,
+after a restart, the cable address and settings are still there but nothing connects until someone opens the app.
 
 ## 5. Trust each other
 
 On the first connection, the client asks you to trust the server's fingerprint, and the server may ask about the
-client's. Before accepting, read the other Mac's own fingerprint:
+client's. Before accepting, read the other Mac's own fingerprint, over a channel you trust:
 
 ```bash
 $S/check-deskflow.sh | grep 'own certificate'     # run on the OTHER Mac
@@ -144,8 +155,9 @@ When something else fails, the log line is probably in
 ```bash
 pkill -TERM -f /Applications/Deskflow.app/Contents/MacOS/deskflow-core
 pkill -TERM -f /Applications/Deskflow.app/Contents/MacOS/Deskflow
-rm -rf /Applications/Deskflow.app ~/Library/Deskflow
+tccutil reset All org.deskflow.deskflow        # forget its Accessibility, Input Monitoring, Local Network grants
+rm -rf /Applications/Deskflow.app ~/Library/Deskflow ~/Library/Preferences/State/Deskflow.state
 ```
 
-Then remove Deskflow from Accessibility, Input Monitoring and Local Network in System Settings. If you assigned
-cable addresses, undo them as described in the wired-link guide.
+Remove it from Login Items too, and delete `~/deskflow.log` if file logging was ever on without a path. If you
+assigned cable addresses, undo them as described in the wired-link guide.

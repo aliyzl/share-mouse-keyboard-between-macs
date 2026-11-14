@@ -4,7 +4,9 @@
 2026-11-14 · Each entry is something that actually happened during the original setup. Start with
 `check-deskflow.sh` on both Macs; it points at most of these.
 
-Log lines are quoted exactly. The server log is `~/Library/Deskflow/deskflow.log` when `log/toFile=true`.
+Log lines are quoted exactly. `write-deskflow-config.py` turns on the log file at `~/Library/Deskflow/deskflow.log`.
+Without it, Deskflow logs only to its window, or to `~/deskflow.log` if `log/toFile=true` is set with no
+`log/file`. `<skill>` is this skill's folder: `skills/deskflow-two-macs` in a clone of the repository.
 
 ## Install
 
@@ -45,8 +47,9 @@ curl -H "Accept: application/vnd.github.raw" https://api.github.com/repos/deskfl
 **Why:** Deskflow has no Accessibility permission. The GUI checks for it at start (`checkMacAssistiveDevices`) and
 exits.
 
-**Fix:** turn on Deskflow in System Settings → Privacy & Security → Accessibility. If it is already on, toggle it
-off and on: a replaced app keeps the old entry but not the old trust.
+**Fix:** turn on Deskflow in System Settings → Privacy & Security → Accessibility, then `open -a Deskflow` again.
+If it is already on, toggle it off and on: a replaced app keeps the old entry but not the old trust (this is common
+macOS behaviour, not something tested here).
 
 ### `FATAL: a runtime error occurred: assistive devices does not trust this process`
 
@@ -67,7 +70,9 @@ config`, `core stopped with error code: 4`.
 
 ### Deskflow will not quit
 
-`osascript -e 'quit app "Deskflow"'` returns *"User canceled"* or leaves the app running in the menu bar.
+`osascript -e 'tell application "Deskflow" to quit'` fails with *"execution error: Deskflow got an error: User
+canceled. (-128)"*, even with `gui/closeReminder=false`, or it leaves the app running in the menu bar. Once,
+`deskflow-core` also kept running after the GUI had gone.
 
 **Fix:** `kill -TERM` both processes by full path:
 
@@ -76,7 +81,8 @@ pkill -TERM -f /Applications/Deskflow.app/Contents/MacOS/deskflow-core
 pkill -TERM -f /Applications/Deskflow.app/Contents/MacOS/Deskflow
 ```
 
-Note that `pgrep -f deskflow` is case-sensitive and does not match the GUI, whose binary is `Deskflow`. One test
+Note that `pgrep -f deskflow` is case-sensitive and does not match the GUI, whose binary is `Deskflow`. macOS
+`pgrep` has no `-E`; use `pgrep -il 'barrier|synergy|deskflow'` for a broad look. One test
 during the original setup concluded "stopped" while the GUI was still alive. The relaunch that followed then only
 brought the running app to the front, and the server stayed down until the GUI was killed.
 
@@ -89,8 +95,9 @@ brought the running app to the front, and the server stayed down until the GUI w
 **Why:** on macOS 15 and later, each app needs **Local Network** permission to open LAN connections. Terminal has
 its own grant, which is why tests from a shell mislead.
 
-**Fix:** turn on Deskflow in System Settings → Privacy & Security → Local Network on the client, then restart the
-client.
+**Fix:** turn on Deskflow in System Settings → Privacy & Security → Local Network on the client. The running client
+connects within seconds; no restart is needed. Check with `lsof -nP -a -p $(pgrep -f MacOS/deskflow-core) -iTCP`.
+The server needs no Local Network permission to listen.
 
 ### `ERROR: failed to accept secure socket` every few seconds on the server
 
@@ -100,8 +107,9 @@ Sometimes it reads `tls error occurred (system call failure)` instead.
 probe (`nc -z <server> 24800`) run from the client. An old Barrier or Synergy client still running on the other
 Mac causes the same thing.
 
-**Fix:** stop the probe, and quit and remove the old client: `pgrep -lf -i barrier`. These lines do not come from
-your Deskflow client.
+**Fix:** stop the probe, and quit any old client that is running (`pgrep -il 'barrier|synergy'`). These lines do
+not come from your Deskflow client. On the original client, Barrier 2.4.0 and Synergy 3.2.1 were installed but not
+running, and caused no conflict.
 
 ### `WARNING: fingerprint does not match trusted fingerprint`
 
@@ -132,17 +140,17 @@ This is harmless. The server hides its cursor while the pointer is on the client
 Measure before changing anything:
 
 ```bash
-bash scripts/measure-latency.sh <other-mac-ip>
+<skill>/scripts/measure-latency.sh <other-mac-ip>
 ```
 
 The script prints each round trip, then the same to the router. In the original setup:
 
-| Path | Average round trip |
+| Path | Round trips |
 | --- | --- |
-| server to client over Wi-Fi | 500–2,800 ms |
-| server to router | 520–580 ms |
-| client to router | 5 ms at the same moment |
-| server to client over a cable | 0.6 ms |
+| between the Macs over Wi-Fi | averages of 460–1,000 ms; single round trips up to 2.8 s |
+| server to router | averages of 517–579 ms |
+| client to router | 5 ms average at a moment when the server still needed 542 ms |
+| between the Macs over a cable | 0.6 ms average |
 
 Deskflow was ruled out by stopping its core: the router latency did not change.
 
@@ -151,6 +159,17 @@ repository's `reports/2026-11-14-wifi-lag/`.
 
 **Do not** run `system_profiler SPAirPortDataType` or any other Wi-Fi scan while measuring. A scan takes the
 radio off its channel and inflates the numbers.
+
+### Deskflow does not start after a restart
+
+The cable address and the settings survive a restart, but Deskflow is not in Login Items, so nothing connects until
+someone opens it. Add it in System Settings → General → Login Items on both Macs. After `open -a Deskflow`, the
+original client reconnected over the cable in under 8 seconds.
+
+### Wi-Fi names show as `<redacted>`
+
+On macOS 15 and later, `system_profiler SPAirPortDataType` hides network names from apps without Location Services
+permission. Channel, band and signal are still shown, which is all a latency diagnosis needs.
 
 ### A falling staircase of round-trip times
 

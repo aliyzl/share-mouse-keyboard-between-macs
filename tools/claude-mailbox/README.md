@@ -58,7 +58,8 @@ first watcher in the original setup failed silently. See [WHAT-WENT-WRONG.md](..
 | `GET /` | — | the viewer page; it reads the token from the URL fragment (`#token`), which the browser never sends to the server |
 
 Every call except the viewer needs `X-Token: <token>`. Messages are kept in the `--log` file (JSON lines), so a
-restart loses nothing.
+restart loses nothing. Pass the same `--token` on a restart, though. Without it a new random token is made, and the
+other side's stops working.
 
 ## Limits
 

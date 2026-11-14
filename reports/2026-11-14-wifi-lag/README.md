@@ -1,7 +1,7 @@
 # Why the pointer lagged, and what fixed it
 
-**Kind:** report · **Date:** 2026-11-14, 23:10–23:30 (Tehran, +0330) · **Status:** closed. The fix is in use, and
-the person confirmed the lag was gone.
+**Kind:** report · **Date:** 2026-11-14, measurements 22:44–23:52, diagnosis 23:10–23:30 (all times UTC+03:30)
+· **Status:** closed. The fix is in use, and the person confirmed the lag was gone.
 
 ## Question
 
@@ -10,9 +10,9 @@ was unusable. Was the cause Deskflow, one of the Macs, or the network, and what 
 
 ## Verdict
 
-**The Wi-Fi path between the Macs, not Deskflow or either Mac's CPU.** A direct Ethernet cable between the Macs
-took round trips from **500–2,800 ms down to 0.6 ms**, and the lag disappeared. Wi-Fi stays in use for the
-internet.
+**The Wi-Fi path between the Macs, not Deskflow.** A direct Ethernet cable between the Macs took round trips from
+**averages of 460–1,000 ms (single ones up to 2.8 s) down to 0.6 ms**, and the lag disappeared. Wi-Fi stays in use
+for the internet.
 
 At the decisive moment, the server's own Wi-Fi leg was the slow one. The client reached the router in 5 ms, while
 the server needed 542 ms. The leading explanation is Bluetooth–Wi-Fi coexistence on the server's shared 2.4 GHz
@@ -29,8 +29,8 @@ uncertain*).
 3. **Simple power saving on the server was ruled out.** Keeping the server's radio busy with a second stream of
    10 pings a second left the pattern unchanged.
 4. **The pattern points at the radio, not at congestion alone.** The server's round trips fell in a staircase of
-   about 205 ms per step, exactly the send interval. Replies were held and delivered together about once a
-   second. A busy channel delays packets more evenly. A radio that is away from the channel, or not listening,
+   about 205 ms per step. That is the actual spacing of the sends (nominally 0.2 s), so the replies were held and
+   delivered together about once a second. A busy channel delays packets more evenly. A radio that is away from the channel, or not listening,
    releases them in bursts.
 5. **Later, only the server's leg stayed slow.** At 23:22 the client reached the router in 5 ms while the server
    needed 542 ms. Whatever was shared earlier (the channel) had eased; the server-specific part had not.
@@ -43,6 +43,7 @@ uncertain*).
 | Path | When | Average round trip |
 | --- | --- | --- |
 | client → server, Wi-Fi | 22:56, before Deskflow | 19.7 ms |
+| client → server, Wi-Fi | 23:16, 100 pings at 20 ms | 370 ms (max 920) |
 | server → client, Wi-Fi | 23:13, lag reported | 998 ms (max 2,120) |
 | server → router, Wi-Fi | 23:13 | 579 ms |
 | server → router, Deskflow stopped | 23:18 | 517 ms |
@@ -74,5 +75,6 @@ These were not tried, so they are untested:
 
 Pings ran at 0.1–0.25 s intervals. Wi-Fi details were taken from `system_profiler SPAirPortDataType` **after**
 the pings, because a scan takes the radio off its channel. Traffic came from `netstat -ibn` deltas over 5 s, and
-the Bluetooth activity from `log show` for `airportd` and `bluetoothd`. The procedure is packaged as
+the Bluetooth activity from `log show` for `airportd` and `bluetoothd`. The client's CPU was checked (`deskflow-core`
+at 0.3 %); the server's was not measured, but stopping its Deskflow core did not change the latency. The procedure is packaged as
 [`measure-latency.sh`](../../skills/deskflow-two-macs/scripts/measure-latency.sh).

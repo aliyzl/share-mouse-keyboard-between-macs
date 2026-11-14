@@ -7,20 +7,24 @@
 #   2. the DMG is a notarized Developer ID image (Gatekeeper accepts it);
 #   3. the app inside is signed by the expected team and passes a strict deep verify.
 #
-# Usage: install-deskflow.sh [--version 1.27.0] [--download-only] [--force]
-#   --version        release tag without the leading "v" (default: latest release)
+# Usage: install-deskflow.sh [--version 1.27.0 | --latest] [--download-only] [--force]
+#   --version        release tag without the leading "v" (default: 1.27.0, the release verified here)
+#   --latest         the newest release instead; its settings format may differ from the one documented
 #   --download-only  verify everything but do not copy into /Applications
 #   --force          replace an existing /Applications/Deskflow.app
+# Needs: curl, and python3 from the Xcode Command Line Tools (xcode-select --install).
 set -euo pipefail
 
+VERIFIED_VERSION="1.27.0"
 EXPECTED_TEAM_ID="5QCJCX8C37"   # Deskflow's Developer ID team, seen on 1.27.0
 REPO="deskflow/deskflow"
 APP_DEST="/Applications/Deskflow.app"
 
-version="" download_only=0 force=0
+version="$VERIFIED_VERSION" download_only=0 force=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --version) version="${2:?--version needs a value}"; shift 2 ;;
+    --latest) version=""; shift ;;
     --download-only) download_only=1; shift ;;
     --force) force=1; shift ;;
     -h|--help) sed -n '2,15p' "$0"; exit 0 ;;
@@ -31,11 +35,23 @@ done
 say()  { printf '==> %s\n' "$*"; }
 fail() { printf 'FAILED: %s\n' "$*" >&2; exit 1; }
 
-case "$(uname -m)" in
-  arm64)  arch="arm64" ;;
-  x86_64) arch="x86_64" ;;
-  *) fail "unsupported CPU architecture: $(uname -m)" ;;
-esac
+# The hardware, not the shell: uname -m says x86_64 inside a Rosetta terminal on Apple Silicon.
+if [[ "$(sysctl -n hw.optional.arm64 2>/dev/null)" == "1" ]]; then arch="arm64"; else arch="x86_64"; fi
+
+xcode-select -p >/dev/null 2>&1 || fail "python3 needs the Xcode Command Line Tools: run xcode-select --install"
+if [[ "$version" != "$VERIFIED_VERSION" ]]; then
+  echo "note: this repository was verified with $VERIFIED_VERSION; ${version:-the latest release} may use other settings" >&2
+fi
+
+# Refuse early, before any download, if installing would clobber or race a running copy.
+if [[ $download_only -eq 0 ]]; then
+  if [[ -e "$APP_DEST" && $force -eq 0 ]]; then
+    fail "$APP_DEST already exists; quit Deskflow and re-run with --force to replace it"
+  fi
+  if pgrep -f "$APP_DEST/Contents/MacOS/" >/dev/null; then
+    fail "Deskflow is running; quit it first (kill -TERM its processes; AppleScript quit is refused)"
+  fi
+fi
 
 if [[ -n "$version" ]]; then api="https://api.github.com/repos/$REPO/releases/tags/v$version"
 else api="https://api.github.com/repos/$REPO/releases/latest"; fi
@@ -83,7 +99,7 @@ fi
 echo "    sha256 $actual matches $matched"
 
 say "Checking the DMG's notarization"
-spctl -a -t open --context context:primary-signature -vv "$work/$dmg_name" 2>&1 | sed 's/^/    /'
+spctl -a -t open --context context:primary-signature -vv "$work/$dmg_name" 2>&1 | sed 's/^/    /' || true
 spctl -a -t open --context context:primary-signature "$work/$dmg_name" 2>/dev/null \
   || fail "Gatekeeper rejects the DMG"
 
@@ -106,13 +122,6 @@ echo "    signed by team $team, notarized"
 if [[ $download_only -eq 1 ]]; then
   say "All checks passed (--download-only: nothing installed)"
   exit 0
-fi
-
-if [[ -e "$APP_DEST" && $force -eq 0 ]]; then
-  fail "$APP_DEST already exists; quit Deskflow and re-run with --force to replace it"
-fi
-if pgrep -f "$APP_DEST/Contents/MacOS/" >/dev/null; then
-  fail "Deskflow is running; quit it first (kill -TERM its processes; AppleScript quit is refused)"
 fi
 
 say "Installing to $APP_DEST"

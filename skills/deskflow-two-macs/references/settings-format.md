@@ -13,7 +13,8 @@ the page.
 | `~/Library/Deskflow/tls/deskflow.pem` | this Mac's TLS certificate and key, created on first start. **Never share or commit it** |
 | `~/Library/Deskflow/tls/trusted-servers` | on a client: the server fingerprints it has accepted |
 | `~/Library/Deskflow/tls/trusted-clients` | on a server: the client fingerprints it has accepted |
-| `~/Library/Deskflow/deskflow.log` | the log, when `log/toFile=true` and `log/file` points here |
+| `~/Library/Deskflow/deskflow.log` | the log, as set up by `write-deskflow-config.py` (`log/toFile=true`, `log/file` pointing here). With `log/toFile=true` and no `log/file`, 1.27 writes `~/deskflow.log` |
+| `~/Library/Preferences/State/Deskflow.state` | window geometry and similar state, kept apart from the settings |
 
 `XDG_CONFIG_HOME`, if set, moves the settings file to `$XDG_CONFIG_HOME/Deskflow/Deskflow.conf`.
 
@@ -86,6 +87,11 @@ computerName=imac
 startCoreWithGui=true
 shownServerFirstStartMessage=true
 
+[log]
+toFile=true
+file=/Users/<you>/Library/Deskflow/deskflow.log
+level=INFO
+
 [server]
 enableClipboard=true
 externalConfig=true
@@ -107,6 +113,11 @@ computerName=macbook
 
 [gui]
 startCoreWithGui=true
+
+[log]
+toFile=true
+file=/Users/<you>/Library/Deskflow/deskflow.log
+level=INFO
 
 [client]
 remoteHost=192.168.77.1

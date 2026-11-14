@@ -1,6 +1,6 @@
 # What went wrong
 
-**Kind:** lessons · **Covers:** the original setup on 2026-11-14 (Tehran, +0330) · Sorted by what it cost. Each
+**Kind:** lessons · **Covers:** the original setup on 2026-11-14 (UTC+03:30) · Sorted by what it cost. Each
 entry gives what happened, why it happened, and the rule that now prevents it. The rules are already built into
 the scripts and the skill. They are written down here so the reasoning survives.
 
@@ -12,7 +12,8 @@ The setup was done by two Claude Code sessions, one on each Mac, coordinating th
 ## 1. The first working setup was unusable: the pointer lagged by seconds (about 25 minutes)
 
 **What happened:** Deskflow connected, and the pointer, typing and clipboard all worked. But the pointer on the
-client trailed the hand badly. Round trips from the server to the client over Wi-Fi measured 500–2,800 ms.
+client trailed the hand badly. Round trips between the Macs over Wi-Fi averaged 460–1,000 ms, and single ones
+reached 2.8 s.
 
 **Why:** the Wi-Fi path, not Deskflow:
 
@@ -113,6 +114,6 @@ plain USB cable are two hosts, so no link forms.
   the first figures. **Rule:** measure first and scan afterwards.
 - **`raw.githubusercontent.com` was blocked on the server's network** while `api.github.com` worked. **Rule:** fetch
   source files through the contents API.
-- **The server's Ethernet service already had an old manual address** (a `/16` in `192.168.0.0/16`). **How it was
-  caught:** `networksetup -getinfo Ethernet` when the cable came up. **Rule:** look at an interface's existing
+- **The server's Ethernet service already had an old manual address,** with a `/16` mask wide enough to overlap the
+  home network's range. **How it was caught:** `networksetup -getinfo Ethernet` when the cable came up. **Rule:** look at an interface's existing
   configuration before assigning addresses. Fit around it rather than overwrite it without asking.

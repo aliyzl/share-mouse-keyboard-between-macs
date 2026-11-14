@@ -68,7 +68,10 @@ def make_handler(token, log_path, messages, lock):
             url = urlparse(self.path)
             if url.path != "/msg":
                 return self._reply(404, {"error": "use POST /msg?from=NAME"})
-            length = int(self.headers.get("Content-Length", 0))
+            try:
+                length = int(self.headers.get("Content-Length", 0))
+            except ValueError:
+                length = -1
             if length <= 0 or length > MAX_BODY:
                 return self._reply(400, {"error": f"body must be 1..{MAX_BODY} bytes"})
             sender = parse_qs(url.query).get("from", ["unknown"])[0][:32]
@@ -97,7 +100,8 @@ def main():
 
     token = a.token or secrets.token_hex(8)
     log_path = Path(a.log)
-    messages = [json.loads(l) for l in log_path.read_text().splitlines()] if log_path.exists() else []
+    lines = log_path.read_text().splitlines() if log_path.exists() else []
+    messages = [json.loads(l) for l in lines if l.strip()]
     server = ThreadingHTTPServer((a.host, a.port), make_handler(token, log_path, messages, threading.Lock()))
     print(f"mailbox on http://{a.host}:{a.port}  token {token}", flush=True)
     print(f"viewer:  http://{a.host}:{a.port}/#{token}", flush=True)

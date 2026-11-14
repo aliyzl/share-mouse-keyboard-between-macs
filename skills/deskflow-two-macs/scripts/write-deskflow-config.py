@@ -7,7 +7,8 @@ Usage:
 
 Deskflow 1.27 keeps its settings in ~/Library/Deskflow/Deskflow.conf (Qt INI format). Writing them
 here means the app starts in the right mode and nothing has to be picked in its window. The script
-edits only the keys it owns and keeps every other line, and it backs the old file up first.
+edits only the keys it owns and keeps every other line, and it backs up every file it replaces. It
+also turns on the log file (<config-dir>/deskflow.log), which troubleshooting relies on.
 
 Two facts about 1.27 that this script encodes, both learned the hard way:
   * core/coreMode is an enum: 1 = client, 2 = server.
@@ -26,7 +27,10 @@ import time
 from pathlib import Path
 
 OPPOSITE = {"right": "left", "left": "right", "up": "down", "down": "up"}
-NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,62}$")
+# Deskflow strips leading and trailing "-", "_" and "." from computer names, so a name must start and
+# end with a letter or digit, or the name it uses and the [computer_<name>] group would differ.
+NAME_RE = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9._-]{0,61}[A-Za-z0-9])?")
+HOST_RE = re.compile(r"[A-Za-z0-9.:-]{1,253}")
 
 
 class QtIni:
@@ -39,15 +43,23 @@ class QtIni:
         for line in text.splitlines():
             header = re.fullmatch(r"\[(.+)\]", line.strip())
             if header:
-                current = header.group(1)
-                self.order.append(current)
-                self.sections[current] = []
-            elif current is None:
-                if line.strip():
-                    self.order.insert(0, "General")
-                    self.sections.setdefault("General", []).append(line)
-            else:
+                current = self._open(header.group(1))
+            elif line.strip() or current is not None:
+                # keys before any header belong to Qt's "General" group
+                current = current or self._open("General")
                 self.sections[current].append(line)
+
+    def _open(self, section):
+        """Start (or, for a repeated header, continue) a section; returns its name."""
+        if section not in self.sections:
+            self.order.append(section)
+            self.sections[section] = []
+        return section
+
+    def remove(self, section):
+        if section in self.sections:
+            del self.sections[section]
+            self.order.remove(section)
 
     def set(self, section, key, value):
         if section not in self.sections:
@@ -74,6 +86,13 @@ class QtIni:
         return "\n".join(out)
 
 
+def backup(path):
+    if path.exists():
+        copy = path.with_name(f"{path.name}.bak-{time.strftime('%Y%m%d-%H%M%S')}")
+        shutil.copy2(path, copy)
+        print(f"backed up {path.name} to {copy}")
+
+
 def deskflow_running():
     return subprocess.run(["pgrep", "-f", "Deskflow.app/Contents/MacOS/"],
                           capture_output=True).returncode == 0
@@ -97,9 +116,16 @@ def main():
     if a.mode == "client" and not a.server:
         p.error("client mode needs --server")
     for n in filter(None, [a.name, a.client]):
-        if not NAME_RE.match(n):
-            print(f"refused: '{n}' is not a usable Deskflow name (letters, digits, . _ -)", file=sys.stderr)
+        if not NAME_RE.fullmatch(n):
+            print(f"refused: {n!r} is not a usable Deskflow name (letters, digits, . _ -;"
+                  " starting and ending with a letter or digit)", file=sys.stderr)
             return 1
+    if a.client and a.client == a.name:
+        print("refused: --name and --client must differ", file=sys.stderr)
+        return 1
+    if a.server and not HOST_RE.fullmatch(a.server):
+        print(f"refused: {a.server!r} is not an IP address or host name", file=sys.stderr)
+        return 1
     if deskflow_running() and not a.allow_running:
         print("refused: Deskflow is running. Quit it first (kill -TERM its two processes;"
               " AppleScript quit is refused), or pass --allow-running.", file=sys.stderr)
@@ -108,20 +134,19 @@ def main():
     cfg_dir = Path(a.config_dir).expanduser()
     cfg_dir.mkdir(parents=True, exist_ok=True)
     conf = cfg_dir / "Deskflow.conf"
-    if conf.exists():
-        backup = conf.with_name(f"Deskflow.conf.bak-{time.strftime('%Y%m%d-%H%M%S')}")
-        shutil.copy2(conf, backup)
-        print(f"backed up the old settings to {backup}")
-        ini = QtIni(conf.read_text())
-    else:
-        ini = QtIni("")
+    backup(conf)
+    ini = QtIni(conf.read_text() if conf.exists() else "")
 
     ini.set("core", "coreMode", "2" if a.mode == "server" else "1")
     ini.set("core", "computerName", a.name)
     ini.set("gui", "startCoreWithGui", "true")
+    ini.set("log", "toFile", "true")
+    ini.set("log", "file", str(cfg_dir / "deskflow.log"))
+    ini.set("log", "level", "INFO")
 
     if a.mode == "server":
         links = cfg_dir / "deskflow-server.conf"
+        backup(links)
         links.write_text(
             "section: links\n"
             f"\t{a.name}:\n\t\t{a.side} = {a.client}\n"
@@ -132,6 +157,9 @@ def main():
         ini.set("server", "enableClipboard", "true")
         ini.set("server", "externalConfig", "true")
         ini.set("server", "externalConfigFile", str(links))
+        # exactly the computers in this layout: a group left from an older layout would linger
+        for section in [s for s in ini.order if s.startswith("computer_")]:
+            ini.remove(section)
         for n in (a.name, a.client):
             ini.set(f"computer_{n}", "name", n)
         print(f"wrote {links}: {a.client} is to the {a.side} of {a.name}")

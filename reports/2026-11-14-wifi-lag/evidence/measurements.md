@@ -1,4 +1,4 @@
-# Measurements, 2026-11-14 (Tehran, +0330)
+# Measurements, 2026-11-14 (UTC+03:30)
 
 Raw figures from both sessions, in time order. **S** is the server, the iMac (Apple Silicon, the keyboard
 and Bluetooth mouse). **C** is the client, the MacBook Pro (Intel). **R** is the home router. The Wi-Fi LAN
@@ -11,6 +11,7 @@ order.
 
 | Time | From → to | Packets, interval | min / avg / max (ms) | Note |
 | --- | --- | --- | --- | --- |
+| 22:44 | C → S | 3 | — / 40 / 79 | measured on C |
 | 22:49 | S → C | 2 | 37.9 / 58.6 / 79.4 | first contact |
 | 22:52 | S → C | 20, 0.2 s | 4.0 / 111.8 / 377.2 (sd 108.7) | |
 | 22:56 | C → S | 20, 0.2 s | 3.6 / 19.7 / 83 (sd 24) | measured on C; no loss |
@@ -23,6 +24,7 @@ order.
 | 23:13 | S → C | 50, 0.1 s | 76.0 / 998.1 / 2120.5 (sd 598.1) | |
 | 23:16 | C → R | 50, 0.1 s | 19 / 510 / 1000 | measured on C, without a concurrent scan |
 | 23:16 | C → S | 50, 0.1 s | — / 810 / 1940 | measured on C |
+| 23:16 | C → S | 100, 0.02 s | — / 370 / 920 | measured on C; a 15 s watch in 2 s windows showed averages of 240–600 ms throughout |
 | 23:22 | C → R | 50 | — / 5 / 14 | measured on C |
 | 23:22 | C → S | 50 | — / 460 / 927 | measured on C |
 | 23:22 | S → R | 40, 0.2 s | 51.8 / 542.1 / 1220.4 (sd 314.8) | |
@@ -39,8 +41,8 @@ about 40 KB in total since it started. C's traffic was 10–20 KB/s, and `deskfl
 660 455 250 1079 876 671 466 264 992 786 581 376 171 1005 799 597 394 188 1024 820 615 410 205 1052
 ```
 
-Each run of five values falls by about 205 ms, which is the send interval. So all five replies arrived at the
-same moment, about once a second.
+Each run of five values falls by about 205 ms, which is the actual spacing of the sends (nominally 0.2 s). So all
+five replies arrived at the same moment, about once a second.
 
 ### Series: S → C at 23:15, 50 pings at 0.2 s
 
@@ -78,6 +80,8 @@ and the home router is a 2.4 GHz-only LTE gateway.
 | --- | --- | --- | --- | --- |
 | 23:29 | C → S | 40 | 0.40 / 0.60 / 0.94 | direct Gigabit Ethernet |
 | 23:30 | S → C | 20, 0.2 s | 0.378 / 0.617 / 0.779 | direct Gigabit Ethernet |
-| 23:52 | S → C and S → R | 20 each, 0.2 s | cable 0.617 avg; router 545.2 avg | the Wi-Fi was still slow; the cable did not care |
+| 23:52 | S → C | 20, 0.2 s | 0.403 / 0.617 / 0.933 | a separate run; the same average as 23:30 by coincidence (min and max differ) |
+| 23:52 | S → R | 20, 0.2 s | 105.1 / 545.2 / 996.0 | the Wi-Fi was still slow; the cable did not care |
+| 00:17 next day | C → S | — | — / 0.61 / — | after the client was restarted; Deskflow reconnected in under 8 s once opened |
 
 The person confirmed that the lag was gone.

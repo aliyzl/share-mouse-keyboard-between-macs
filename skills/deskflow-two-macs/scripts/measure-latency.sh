@@ -2,7 +2,7 @@
 # Measure round-trip latency to the other Mac (and to the router, for comparison) and show the
 # per-packet pattern, which is what tells a busy network from a radio that holds packets back.
 # Usage: measure-latency.sh <other-mac-ip> [count]      (default count 50, one ping every 0.2 s)
-# Exit codes: 0 = average under 10 ms; 1 = slower than that; 2 = usage or no replies.
+# Exit codes: 0 = average under 20 ms (usable for a pointer); 1 = 20 ms or slower; 2 = usage or no replies.
 set -uo pipefail
 
 host="${1:-}"; count="${2:-50}"
@@ -10,7 +10,7 @@ host="${1:-}"; count="${2:-50}"
 
 series() {  # ping and print every round-trip time on one line, then the summary line
   ping -c "$count" -i 0.2 "$1" 2>/dev/null \
-    | awk -F'time=' '/time=/{split($2,a," "); printf (a[1] < 10 ? "%.1f " : "%d "), a[1]} /round-trip/{print ""; print "  " $0}'
+    | awk -F'time=' '/time=/{split($2,a," "); printf (a[1] < 10 ? "%.1f " : "%d "), a[1]} /packet loss/{loss=$0} /round-trip/{print ""; print "  " loss; print "  " $0}'
 }
 
 iface="$(route -n get "$host" 2>/dev/null | awk '/interface:/{print $2}')"
@@ -31,7 +31,7 @@ fi
 cat <<'EOF'
 
 How to read it:
-  * A cable between the Macs gives under 1 ms. Good Wi-Fi gives a few ms. Above about 20 ms
+  * A cable between the Macs gives under 1 ms. Good Wi-Fi gives under 5 ms. Above about 20 ms
     the pointer on the client feels late; above 100 ms it is unusable.
   * A falling staircase (900 700 500 300 100 900 ...) means frames are held and released
     together about once a second: the radio is away from the channel or asleep, not merely busy.
@@ -40,4 +40,4 @@ How to read it:
     takes the radio off its channel and spoils the numbers.
 EOF
 
-awk -v a="$avg" 'BEGIN{exit !(a < 10)}' && exit 0 || exit 1
+if awk -v a="$avg" 'BEGIN{exit !(a < 20)}'; then exit 0; else exit 1; fi

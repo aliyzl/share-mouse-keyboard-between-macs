@@ -19,6 +19,7 @@ for m in json.load(sys.stdin):
 case "${1:-}" in
   send)
     from="${2:?send needs a sender name}"
+    [[ "$from" =~ ^[A-Za-z0-9_-]{1,32}$ ]] || { echo "sender name: letters, digits, _ and - only" >&2; exit 2; }
     curl -fsS -X POST -H "X-Token: $MAILBOX_TOKEN" --data-binary @- "$MAILBOX_URL/msg?from=$from"; echo ;;
   read)
     out="$(curl -fsS -H "X-Token: $MAILBOX_TOKEN" "$MAILBOX_URL/msgs?since=${2:-0}")" || exit 1
@@ -26,7 +27,9 @@ case "${1:-}" in
   watch)
     me="${2:?watch needs your own name}"; last="${3:-0}"
     while true; do
-      batch="$(curl -fsS -m 5 -H "X-Token: $MAILBOX_TOKEN" "$MAILBOX_URL/msgs?since=$last" || echo '[]')"
+      # an error goes to stdout too: a watcher that fails quietly looks like one with nothing to report
+      batch="$(curl -fsS -m 5 -H "X-Token: $MAILBOX_TOKEN" "$MAILBOX_URL/msgs?since=$last" 2>&1)" \
+        || { echo "[watch] error: mailbox unreachable or bad token (${batch:-no answer})"; sleep 5; continue; }
       show "$me" <<< "$batch"
       last="$(/usr/bin/python3 -I -c 'import json,sys; m=json.load(sys.stdin); print(m[-1]["id"] if m else sys.argv[1])' "$last" <<< "$batch")"
       sleep 2

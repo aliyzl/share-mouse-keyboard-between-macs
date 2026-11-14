@@ -1,8 +1,26 @@
 #!/usr/bin/env bash
 # Read-only status of Deskflow on this Mac: install, settings, processes, connection, recent log.
-# Usage: check-deskflow.sh
+# Usage: check-deskflow.sh [--share]
+#   --share  mask what identifies you (home path, IP addresses, fingerprints, computer names) so the
+#            output can be pasted into a public issue. Without it, the output is for your eyes only.
 # Exit codes: 0 = core running (and, on a client, connected); 1 = something to fix (printed as FIX lines).
 set -uo pipefail
+
+if [[ "${1:-}" == "--share" ]]; then
+  conf="$HOME/Library/Deskflow/Deskflow.conf"
+  names="$(awk -F= '/^(computerName|name|remoteHost)=/{print $2}' "$conf" 2>/dev/null | sort -u)"
+  "$0" | /usr/bin/python3 -I -c '
+import re, sys
+home, names = sys.argv[1], [n for n in sys.argv[2].split("\n") if n]
+text = sys.stdin.read().replace(home, "~")
+text = re.sub(r"\b[0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){15,}\b", "<fingerprint>", text)
+text = re.sub(r"\b\d{1,3}(\.\d{1,3}){3}\b", "<ip>", text)
+for i, n in enumerate(sorted(names, key=len, reverse=True), 1):
+    text = re.sub(re.escape(n), f"<name{i}>", text)
+sys.stdout.write(text)
+' "$HOME" "$names"
+  exit "${PIPESTATUS[0]}"
+fi
 
 APP="/Applications/Deskflow.app"
 DIR="$HOME/Library/Deskflow"
@@ -33,7 +51,7 @@ if [[ "$mode" == 2 ]]; then
   if [[ -r "$links" ]]; then ok "layout file $links"; else fix "layout file '${links:-unset}' not readable"; fi
   grep -q '^section: screens' "$links" 2>/dev/null && fix "layout file has 'section: screens', which 1.27 ignores"
   # every computer named in the links section needs its own [computer_<name>] group
-  for n in $(awk '/^section: links/{f=1;next} /^end/{f=0} f&&/=/{print $3}' "$links" 2>/dev/null | sort -u) "$name"; do
+  for n in $(awk -F= '/^section: links/{f=1;next} /^end/{f=0} f&&/=/{gsub(/[ \t]/,"",$2); print $2}' "$links" 2>/dev/null | sort -u) "$name"; do
     grep -q "^\[computer_$n\]" "$CONF" || fix "no [computer_$n] group in Deskflow.conf ('unknown computer name')"
   done
 fi
