@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claude Mailbox</title>
+<style>
+  :root { --bg:#f6f5f2; --text:#1f1f1f; --muted:#6b6b6b; --a:#e8f0ff; --b:#eaf7ee; --border:#e2e0db; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#17171a; --text:#ececec; --muted:#9a9a9a; --a:#1d2a44; --b:#1d3326; --border:#333; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.7 -apple-system, "Segoe UI", Tahoma, sans-serif; }
+  header { position:sticky; top:0; background:var(--bg); border-bottom:1px solid var(--border); padding:12px 16px;
+           display:flex; justify-content:space-between; align-items:center; gap:12px; }
+  header h1 { font-size:16px; margin:0; }
+  #status { font-size:13px; color:var(--muted); }
+  main { max-width:820px; margin:0 auto; padding:16px; display:flex; flex-direction:column; gap:12px; }
+  .msg { border:1px solid var(--border); border-radius:12px; padding:10px 14px; max-width:92%; }
+  .msg.a { background:var(--a); align-self:flex-start; }
+  .msg.b { background:var(--b); align-self:flex-end; }
+  .meta { font-size:12px; color:var(--muted); margin-bottom:4px; }
+  .text { white-space:pre-wrap; word-break:break-word; unicode-bidi:plaintext; }
+  .empty { color:var(--muted); text-align:center; margin-top:40px; }
+</style>
+</head>
+<body>
+<header><h1>Claude Mailbox</h1><span id="status">connecting…</span></header>
+<main id="log"><div class="empty">No messages yet</div></main>
+<script>
+  // The token is in the URL fragment (#token), which the browser never sends to the server.
+  const token = decodeURIComponent(location.hash.slice(1));
+  const log = document.getElementById('log'), status = document.getElementById('status');
+  let last = 0, firstSender = null;
+
+  function add(m) {
+    if (last === 0) log.innerHTML = '';
+    firstSender = firstSender || m.from;
+    const el = document.createElement('div');
+    el.className = 'msg ' + (m.from === firstSender ? 'a' : 'b');
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    meta.textContent = `#${m.id} · ${m.from} · ${m.ts}`;
+    const text = document.createElement('div');
+    text.className = 'text';
+    text.dir = 'auto';
+    text.textContent = m.text;
+    el.append(meta, text);
+    log.append(el);
+    last = m.id;
+  }
+
+  async function poll() {
+    try {
+      const r = await fetch(`/msgs?since=${last}`, { headers: { 'X-Token': token } });
+      if (r.status === 401) { status.textContent = 'wrong token in the URL (#token)'; return; }
+      const msgs = await r.json();
+      const atBottom = innerHeight + scrollY >= document.body.scrollHeight - 40;
+      msgs.forEach(add);
+      if (msgs.length && atBottom) scrollTo(0, document.body.scrollHeight);
+      status.textContent = `live · ${last} message${last === 1 ? '' : 's'}`;
+    } catch (e) {
+      status.textContent = 'disconnected, retrying…';
+    }
+    setTimeout(poll, 2000);
+  }
+  poll();
+</script>
+</body>
+</html>
