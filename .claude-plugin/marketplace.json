@@ -1,0 +1,16 @@
+{
+  "name": "share-mouse-keyboard-between-macs",
+  "owner": {
+    "name": "aliyzl"
+  },
+  "metadata": {
+    "description": "Share one Mac's keyboard and mouse with another Mac using Deskflow: a verified setup skill with install, settings, wired-link and latency scripts."
+  },
+  "plugins": [
+    {
+      "name": "deskflow-two-macs",
+      "source": "./",
+      "description": "Share one Mac's keyboard and mouse with another Mac using Deskflow"
+    }
+  ]
+}

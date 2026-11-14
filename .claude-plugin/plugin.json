@@ -1,0 +1,9 @@
+{
+  "name": "deskflow-two-macs",
+  "description": "Set up Deskflow keyboard and mouse sharing between two Macs: verified install, settings written before first launch, permissions, a wired link, and latency diagnosis.",
+  "author": { "name": "aliyzl" },
+  "homepage": "https://github.com/aliyzl/share-mouse-keyboard-between-macs",
+  "repository": "https://github.com/aliyzl/share-mouse-keyboard-between-macs",
+  "license": "MIT",
+  "keywords": ["deskflow", "macos", "keyboard-mouse-sharing", "universal-control-alternative", "kvm"]
+}
